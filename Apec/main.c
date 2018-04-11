@@ -6,10 +6,10 @@
 #include <limits.h>
 #include "readapec.h"
 
-#define emax             (2.200000) //keV
-#define emin             (0.200000) //keV
-#define eres             (2.500e-3) //keV
-#define nsize            1
+#define emax             (2.000000) //keV
+#define emin             (0.500000) //keV
+#define eres             (1.00e-3) //keV
+#define nsize            3
 
 typedef struct {
        float *ebin;
@@ -18,10 +18,10 @@ typedef struct {
 
 
 void init_apec();
-void apec ( double *ebins, int nbins, double abun, double z, double temp, double spec[] );
+void close_apec();
+void apec ( double *ebins, int nbins, double abun, double temp, double redshift, double spec[] );
 
 int set_energy_bins(double **ebin){
-
 
     int i;
     int ne, iemin, iemax;
@@ -66,7 +66,7 @@ int main() {
     double sum;
     double z_emit;
 
-    double *spec, *spec_temp;
+    double *spec;
         
     int num_grid = nsize;
     int num_mesh;
@@ -77,65 +77,52 @@ int main() {
 
     FILE *output;
 
-    spec = NULL;
+    char filename[1024];
 
     /* Set up energy bins. ne is the number of energy bins. Note ebins has size of ne+1.  */
     ne = set_energy_bins(&ebin);
-	
-    if (ebin == NULL) {
-	fprintf(stderr,"ebin[] is NULL!\n");
-	exit(1);
-    }
 
     num_mesh = num_grid*num_grid*ne;
-
-    init_apec();
 
     /* input temperature of 10 keV, metallicity of 0.2 Solar */
     inputt = 10.0;
     abun = 0.20;
     z_emit = 0.06; // set emission redshift at 0.06
 
-    /* array of the spectrum. It has size of ne */
-    spec = (double *)calloc(ne,sizeof(double));
-    for (ie = 0; ie < ne; ie++) {
-        spec[ie] = 0.0;
-    }
 
-#pragma omp parallel for default(shared), private(i,ie,spec_temp)
     for (i = 0; i < nsize; i++) {
-        spec_temp = (double *)calloc(ne,sizeof(double));
-
+        init_apec();
+        printf("%d\n", i);    
+        spec = (double *)malloc(ne*sizeof(double));
+        
         for (ie = 0; ie < ne; ie++) {
-            spec_temp[ie] = 0.0;
-        }
-        apec (ebin, ne, abun, z_emit, inputt, spec_temp);
-
-        for (ie = 0; ie < ne; ie++) {
-            spec[ie] += spec_temp[ie];
+            spec[ie] = 0.0;
         }
 
-        free(spec_temp);
-    }
-    
-    /* spectrum in counts / sec / cm^3 / keV  */
-    for (ie=0; ie < ne; ie++) {
-	delta_e = (ebin[ie+1]-ebin[ie]); 
-	spec[ie] = spec[ie]/delta_e;
+        /* spectrum in restframe */
+        apec (ebin, ne, abun, inputt, z_emit, spec);
+        
+        // spectrum in counts / sec / cm^3 / keV
+        for (ie=0; ie < ne; ie++) {
+            delta_e = (ebin[ie+1]-ebin[ie]); 
+	    spec[ie] = spec[ie]/delta_e;
+        }
+
+        // printing out the spectrum into an ascii file 
+        sprintf(filename, "spec_%d.dat", i);
+        output = fopen(filename, "w");
+        for (ie=0;ie<ne;ie++) {
+            fprintf(output,"%e %e\n",0.5*(ebin[ie]+ebin[ie+1]),spec[ie]);
+        }
+
+        fclose (output);
+
+        free(spec);
+ 
+        
     }
 
-    /* printing out the spectrum into an ascii file */
-    output = fopen("spec.dat", "w");
-    for (ie=0;ie<ne;ie++) {
-        fprintf(output,"%e %e\n",0.5*(ebin[ie]+ebin[ie+1]),spec[ie]);
-    }
-
-
-    free(spec);
     free(ebin);
-
-    fclose (output);
-
     return 0;
 
 }

@@ -897,15 +897,15 @@ Note that the unit does not include hubble parameter (h).
       ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
       T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
 
-      // in ph cm^3 /s with 1/(1+z) dependence
-      emis = int_lambda_table ( T, redshift, tarray, zarray, lambda_table);
+      // in ergs cm^3 /s
+      emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table);
       ne = ngas * mmw / mu_e;
       nH = ne / 1.2;
-      // in ph /cm^3 /s
+      // in ergs /cm^3 /s
       emis *= ne * nH;
 
       // total (1+z)^-4 dependence for integrated over E
-      emis /= pow((1.0+redshift), 3.0);
+      // emis /= pow((1.0+redshift), 3.0);
 
       return emis; 
     }

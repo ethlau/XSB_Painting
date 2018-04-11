@@ -11,8 +11,8 @@
 #define nzmax		10
 #define zlmin		-6.00
 #define zlmax		2.0
-#define rlmin           1.e-6
-#define rlmax           2.2
+#define rmin            1.e-6
+#define rmax            2.0
 #define nrmax           50
 
 extern double tarray[ntmax]; //keV

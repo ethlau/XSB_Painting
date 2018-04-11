@@ -9,12 +9,12 @@ CXXFLAGS = -O2 -std=c++11
 #CXXFLAGS += -DOUTPUT_NFW_DENSITY
 #CXXFLAGS += -DLONGIDS
 #CXXFLAGS += -DEXCLUDE_SUBHALOS
-CXXFLAGS += -DMASS_SELECTION=1e12
+CXXFLAGS += -DMASS_SELECTION=1e14
 #CXXFLAGS += -DROCKSTAR_CONCENTRATION
-CFLAGS += -I/usr/local/include -I/home/fas/nagai/etl28/Xrays/cfitsio
-CXXFLAGS += -I/usr/local/include
+CFLAGS += -I/home/fas/nagai/etl28/programs/cfitsio
+CXXFLAGS += -I/home/fas/nagai/etl28/programs/cfitsio
 
-CLIBS = -lgsl -lgslcblas -lm -L/home/fas/nagai/etl28/Xrays/cfitsio -lcfitsio
+CLIBS = -lgsl -lgslcblas -lm -L/home/fas/nagai/etl28/programs/cfitsio -lcfitsio 
 
 APEC_SRCS = Apec.c atomdb_make_spectrum.c calc_continuum.c calc_lines.c messages.c readapec.c read_continuum_data.c read_fits_spectrum.c read_line_data.c read_parameters.c gaussianLine.c
 

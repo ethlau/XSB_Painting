@@ -15,6 +15,8 @@ struct EMISSION_LINES {
   //struct EMISSION_LINES *next;
 };
 
+
+
 struct COMPRESS_CONT { /* Holds one ion's continuum only */
   int     Z;
   int     rmJ;
@@ -39,6 +41,7 @@ struct EMISSION_BLOCK {
   struct COMPRESS_CONT *coco; /* pointer to the first continuum */
   struct EMISSION_BLOCK *next; /* pointer to the next emission block */
 };
+  
 
 struct EMISSION {
   int nblock; /* number of blocks */ 
@@ -73,6 +76,5 @@ struct EMISSION_ION {
   struct EMISSION_ION *next;
 };
 
-//extern const struct EMISSION ** const apec_data_global_pointer;
-extern struct EMISSION ** apec_data_global_pointer;
+extern const struct EMISSION ** const apec_data_global_pointer;
 #define apec_data_memstore (*apec_data_global_pointer)

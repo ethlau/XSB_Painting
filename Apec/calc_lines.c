@@ -1,4 +1,3 @@
-#include <math.h>
 #include "readapec_spectrum.h"
 
 #define keV_erg 1.60217657e-9
@@ -23,9 +22,8 @@ double getAtomicMass(int Z) {
 
 }
 
-
 void calc_lines(struct EMISSION *apec_data, int nbins, 
-                          double *ebins, int hdu, int Z, int rmJ,
+                          double *ebins, int hdu, int Z, int rmJ, 
                           double redshift,
                           double *spectrum) {
   /* note that hdu is indexed from 1, so 1 is the first one. This will
@@ -38,6 +36,7 @@ void calc_lines(struct EMISSION *apec_data, int nbins,
   int icont;
   struct EMISSION_BLOCK *emblock;
   double tmplineenergy;
+  
   double width;
   double temperature;
   double mass;
@@ -66,8 +65,8 @@ void calc_lines(struct EMISSION *apec_data, int nbins,
   if (rmJ==0) {
     /* this means do all the ions of element Z */
     for (iline=0;iline<emblock->nline;iline++) {
-      tmplineenergy = keVtoA/emblock->lines[iline].lambda;
-      tmplineenergy /= z1;
+      tmplineenergy=keVtoA/emblock->lines[iline].lambda;
+      //tmplineenergy /= z1;
     
       if (tmplineenergy < ebins[0]) continue;
       if (tmplineenergy > ebins[nbins]) continue;
@@ -78,20 +77,19 @@ void calc_lines(struct EMISSION *apec_data, int nbins,
       while (ebins[ibin] < tmplineenergy) ibin++;
     
     /* the appropriate bin is ibin-1, add in the emissivity here */
-      //spectrum[ibin-1] += emblock->lines[iline].epsilon;
-
+      //spectrum[ibin-1] += emblock->lines[iline].epsilon; 
+      
       width = tmplineenergy * (sqrt( temperature * keV_erg /
                             getAtomicMass(Z) / amu_g ) + velocity*1.0e5) / c_cm_s;  
 
-      //printf("width, E0 = %e, %e\n", width, tmplineenergy);
-
       calcGaussianLine(ebins, nbins, tmplineenergy, width, emblock->lines[iline].epsilon, crtsig, spectrum);
+    
     } 
   } else {
     for (iline=0;iline<emblock->nline;iline++) {
-      tmplineenergy=keVtoA/emblock->lines[iline].lambda;   
-      tmplineenergy /= z1;
-
+      tmplineenergy=keVtoA/emblock->lines[iline].lambda;
+      //tmplineenergy /= z1;
+    
       if (tmplineenergy < ebins[0]) continue;
       if (tmplineenergy > ebins[nbins]) continue;
       if (emblock->lines[iline].Z != Z) continue;
@@ -104,13 +102,13 @@ void calc_lines(struct EMISSION *apec_data, int nbins,
     /* the appropriate bin is ibin-1, add in the emissivity here */
       //spectrum[ibin-1] += emblock->lines[iline].epsilon;
 
+    
       width = tmplineenergy * (sqrt( temperature * keV_erg /
                             getAtomicMass(Z) / amu_g ) + velocity*1.0e5) / c_cm_s;
 
       calcGaussianLine(ebins, nbins, tmplineenergy, width, emblock->lines[iline].epsilon, crtsig, spectrum);
-    }
 
+    
+    } 
   }
-
-
 };

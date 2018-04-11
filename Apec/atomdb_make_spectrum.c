@@ -4,10 +4,10 @@
 
 
 void calc_continuum(struct EMISSION *apec_data,
-                    int nbins, double *ebins,  int hdu, int Z, int rmJ, double redshift, 
+                    int nbins, double *ebins,  int hdu, int Z, int rmJ, 
                     double *spectrum);
 void atomdb_make_spectrum(struct EMISSION *apec_data, int nbins, 
-                          double *ebins, int hdu, double redshift, double *spectrum) {
+                          double *ebins, int hdu, double *spectrum) {
   /* note that hdu is indexed from 1, so 1 is the first one. This will
    * actually be #2 in the fits file, due to the parameters hdu.
    * */
@@ -33,7 +33,7 @@ void atomdb_make_spectrum(struct EMISSION *apec_data, int nbins,
   /* debug*/
   /* add every line to the appropriate bin */
   for (iline=0;iline<emblock->nline;iline++) {
-    tmplineenergy=12.398425/emblock->lines[iline].lambda/(1.0+redshift);
+    tmplineenergy=12.398425/emblock->lines[iline].lambda;
     /*
      * 
      *  check if outside the range completely */
@@ -55,7 +55,7 @@ void atomdb_make_spectrum(struct EMISSION *apec_data, int nbins,
   
   for (icont=0;icont<emblock->nelement;icont++) {
     calc_continuum(apec_data,
-                   nbins, ebins, hdu, cont->Z, 0, redshift, 
+                   nbins, ebins, hdu, cont->Z, 0, 
                    tmpcoco);
     cont=cont->next;
     for (ibin=0;ibin<nbins;ibin++){

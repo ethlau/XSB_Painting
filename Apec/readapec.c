@@ -9,6 +9,7 @@
 #include <float.h>
 #include "readapec.h"
 
+
 void readapec_getdata(char *linefile,
                        char *cocofile,
                        struct EMISSION **apec_data) {
@@ -60,7 +61,6 @@ void readapec_simple_spectrum(const struct EMISSION *apec_data,
                           int nbins,
                           double *ebins,
                           int hdu,
-                          double redshift,
                           double *spectrum) {
   /* This routine calculates the spectrum for a specific HDU.
    * It does not separate the emissivity by ion or element,
@@ -107,7 +107,7 @@ void readapec_simple_spectrum(const struct EMISSION *apec_data,
   }
 
   atomdb_make_spectrum(apec_data, nbins,
-                      ebins, hdu, redshift, spectrum);
+                      ebins, hdu, spectrum);
 };
 
 void readapec_calc_hdu_elem_spectrum(const struct EMISSION *apec_data,
@@ -115,7 +115,6 @@ void readapec_calc_hdu_elem_spectrum(const struct EMISSION *apec_data,
                           double *ebins,
                           int hdu,
                           int Z,
-                          double redshift,
                           double *spectrum) {
 
 
@@ -170,9 +169,9 @@ void readapec_calc_hdu_elem_spectrum(const struct EMISSION *apec_data,
   }
 
   /* get the line data */
-  calc_lines(apec_data, nbins, ebins, hdu, Z, 0, redshift, spectrum);
+  calc_lines(apec_data, nbins, ebins, hdu, Z, 0, spectrum);
   /* get the continuum data */
-  calc_continuum(apec_data, nbins, ebins, hdu, Z, 0, redshift, spectrum);
+  calc_continuum(apec_data, nbins, ebins, hdu, Z, 0, spectrum);
 
   /* and we're done */
 };
@@ -183,7 +182,6 @@ void readapec_calc_hdu_ion_spectrum(const struct EMISSION *apec_data,
                           int hdu,
                           int Z,
                           int rmJ,
-                          double redshift,
                           double *spectrum) {
 
 
@@ -224,9 +222,8 @@ void readapec_calc_hdu_ion_spectrum(const struct EMISSION *apec_data,
                           rmJ,
                           doline,
                           docont,
-                          redshift,
                           spectrum);
- 
+  
   
   /* and we're done */
 };
@@ -240,7 +237,6 @@ void readapec_calc_hdu_ion_spectrum_part(const struct EMISSION *apec_data,
                           int rmJ,
                           int doline,
                           int docont,
-                          double redshift,
                           double *spectrum) {
 
 
@@ -300,7 +296,7 @@ void readapec_calc_hdu_ion_spectrum_part(const struct EMISSION *apec_data,
   
   /* get the line data */
   if (doline != 0) {
-    calc_lines(apec_data, nbins, ebins, hdu, Z, rmJ, redshift, lspec);
+    calc_lines(apec_data, nbins, ebins, hdu, Z, rmJ, lspec);
   } else {
     for (i=0; i<nbins; i++) {
       lspec[i] = 0.0;
@@ -309,7 +305,7 @@ void readapec_calc_hdu_ion_spectrum_part(const struct EMISSION *apec_data,
   
   /* get the continuum data */
   if (docont != 0) {
-    calc_continuum(apec_data, nbins, ebins, hdu, Z, rmJ, redshift, cspec);
+    calc_continuum(apec_data, nbins, ebins, hdu, Z, rmJ, cspec);
   } else {
     for (i=0; i<nbins; i++) {
       cspec[i] = 0.0;
@@ -318,13 +314,12 @@ void readapec_calc_hdu_ion_spectrum_part(const struct EMISSION *apec_data,
   
   for (i=0; i<nbins; i++) {
     spectrum[i] = cspec[i]+lspec[i];
-    if (redshift > 0 ) {
-        spectrum[i] /= (1.0+redshift); // correct for redshift time dilation dt' = (1+z)*dt 
-    }
   }
   
   /* and we're done */
 };
+
+
 
 int readapec_find_kT_hdu(const struct EMISSION *apec_data,
                 double kT, int log) {
@@ -406,12 +401,6 @@ int readapec_find_kT_hdu(const struct EMISSION *apec_data,
       }
     }
   }
-
-  if ( closestind < 0) {
-    printf("HDU is smaller than 1!\n");
-    exit(1);
-  }
-
   /* return the index, adding 1 to index from 1 instead of zero */
   return(closestind+1);
 
@@ -426,7 +415,6 @@ void readapec_calc_ion_spectrum(const struct EMISSION *apec_data,
                        int nearest,
                        int doline,
                        int docont,
-                       double redshift,
                        double *spectrum) {
 
   /* This routine calculates the spectrum at a specific temperature
@@ -500,7 +488,6 @@ void readapec_calc_ion_spectrum(const struct EMISSION *apec_data,
                           rmJ,
                           doline,
                           docont,
-                          redshift,
                           spectrum);
     return;
 
@@ -523,7 +510,6 @@ void readapec_calc_ion_spectrum(const struct EMISSION *apec_data,
                         rmJ,
                         doline,
                         docont,
-                        redshift,
                         speclo);
   /* get the spectra */
   readapec_calc_hdu_ion_spectrum_part(apec_data,
@@ -534,7 +520,6 @@ void readapec_calc_ion_spectrum(const struct EMISSION *apec_data,
                         rmJ,
                         doline,
                         docont,
-                        redshift,
                         spechi);
   /* calculate the interpolation fraction */
   interpfrac = (log(kT)-log(apec_data->kT[ihdulo-1]))/
@@ -565,7 +550,6 @@ void readapec_calc_allion_spectrum(const struct EMISSION *apec_data,
                           int nelements,
                           int *Zlist,
                           int byion,
-                          double redshift,
                           struct EMISSION_LIST **emission_list) {
   /* This routine calculates the spectrum at a specific temperature
    * for all the ions of all the elements in Zlist. It then returns 
@@ -674,7 +658,6 @@ void readapec_calc_allion_spectrum(const struct EMISSION *apec_data,
                           nearest,
                           1,
                           1,
-                          redshift,
                           tmpspectrum);
         
         /* now allocate this to a new emission_ion block */
@@ -712,7 +695,6 @@ void readapec_calc_allion_spectrum(const struct EMISSION *apec_data,
                         nearest,
                         1,
                         1,
-                        redshift,
                         tmpspectrum);
       
       /* now allocate this to a new emission_ion block */
@@ -743,13 +725,12 @@ void readapec_calc_total_emission_abundance(struct EMISSION_LIST *emission_list,
                                    int nelements,
                                    int *Zlist,
                                    double *abundlist,
-                                   double redshift,
                                    double defaultabund,
                                    double *spectrum) {
 
    /* This routine takes a calculated emission list (separated by ion
     * or element) and applies a relative abundance to them. There are
-    * already abundances for the solar photosphere from Anders and 
+    * already abundances for the solar photosphere from Andres and 
     * Grevesse 1989 built into the emissivities, so new abundances
     * should be entered relative to these values */
     
@@ -800,17 +781,35 @@ void readapec_calc_total_emission_abundance(struct EMISSION_LIST *emission_list,
        abfrac = abundlist[ind];
      }
      
+     /* modification for electron-electron bremsstrahlung:
+      * since Ne = 1.2NH, multiply by 1.2. This can/will be
+      * replaced by full Ne calculation at a later date*/
+      
+     if (Z==0) {
+       abfrac *= 1.2;
+     }
+
      if (abfrac > 0.0) {
        for (i=0; i < emission_list->nbins; i++) {
          spectrum[i] += ion_emission->emissivity[i]*abfrac;
        }
      }
+     
      if (ion_emission->emissivity != NULL) free(ion_emission->emissivity);
+       
      ion_emission = ion_emission->next;
    }
-
+ 
    return;
    
 };
+
+
+
+
+
+
+
+
 
 

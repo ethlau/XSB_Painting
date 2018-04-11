@@ -10,7 +10,7 @@
 
 #define MAXBINS 500
 
-#define M500_THRESHOLD 1e13
+#define M500_THRESHOLD 1e14
 
 double tarray[ntmax]; //keV
 double zarray[nzmax]; //Solar unit
@@ -23,6 +23,8 @@ const double megapc = 3.0857e24; // in cm
 float periodic(float x, float L);
 void emission_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, int nbins);
 void temperature_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, double* weight, int nbins);
+
+double vikhlinin_lum ( double M500, double redshift);
 
 using namespace std;
 int main(int argc, char *argv[]){
@@ -68,6 +70,7 @@ int main(int argc, char *argv[]){
     double r_in[MAXBINS], r_out[MAXBINS], dvol[MAXBINS];
     double rbins[MAXBINS], emiss_prof[MAXBINS], sb_prof[MAXBINS], emiss_measure[MAXBINS];
     double kT[MAXBINS], ngas[MAXBINS];
+    double Lx[MAXBINS], Lx_total, Lx_vik;
     double kT_2D[MAXBINS], ngas_2D[MAXBINS];
     double angbins[MAXBINS], ang_in[MAXBINS], ang_out[MAXBINS], solid_angle[MAXBINS];
     int i, j;
@@ -94,8 +97,9 @@ int main(int argc, char *argv[]){
     outprof = fopen (outprofname, "w");
     outhalo = fopen (outhaloname, "w");
 
-    fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500 [Msun] R500 Rvir Rscale [Mpc]\n");
-    fprintf(outprof,"# r_in r_mid r_out [Mpc] ang_in ang_mid ang_out [arcsecs] Sx [cts/s/cm^2/arcsec^2] kT_projected [keV]\n");
+    fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500 [Msun] R500 Rvir Rscale [Mpc] Lx [ergs/s]\n");
+    //fprintf(outprof,"# r_in r_mid r_out [Mpc] ang_in ang_mid ang_out [arcsecs] Sx [cts/s/cm^2/arcsec^2] kT_projected [keV]\n");
+    fprintf(outprof,"# r_in r_mid r_out [Mpc] ang_in ang_mid ang_out [arcsecs] Lx [ergs/s] kT_projected [keV]\n");
     for( i=0; i < halos->num_halos; i++){
     //for( i=0; i < 100; i++){
         halo = &(halos->list[i]);
@@ -110,6 +114,7 @@ int main(int argc, char *argv[]){
             emiss_prof[j] = 0.0;
             kT[j] = 0.0;
             ngas[j] = 0.0;
+            Lx[j] = 0.0;
             kT_2D[j] = 0.0;
             ngas_2D[j] = 0.0;
             ang_in[j] = 0.0;
@@ -136,9 +141,11 @@ int main(int argc, char *argv[]){
         //M500 = nfwclus.get_mass_overden(500.0); // M500 in Msol (for calculating stellar mass frac)
 
         M500 = halo->M500c/h;
-        R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(z)), 1.0/3.0);
+        R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
         Rvir = nfwclus.get_radius();
         Rscale = halo->rs/1000;
+
+        Lx_vik = vikhlinin_lum ( M500, Redshift ); 
 
         printf("Halo parameters: \n");
         printf("M500 = %e, Redshift = %f\n", halo->M500c/h, Redshift);
@@ -147,7 +154,7 @@ int main(int argc, char *argv[]){
         gas_model icm_mod(delta_rel, ad_index, eps_fb, eps_dm, fs_0, fs_alpha, pturbrad, delta_rel_zslope, delta_rel_n);
 
         icm_mod.calc_fs(M500, Omega_b/Omega_M, cosmic_t0, cosmic_t);
-        icm_mod.evolve_pturb_norm(z, rcutoff);
+        icm_mod.evolve_pturb_norm(Redshift, rcutoff);
         icm_mod.set_nfw_params(Mvir, Rvir, conc, nfwclus.get_rhoi(), R500);
         icm_mod.set_mgas_init(Omega_b/Omega_M);
         icm_mod.findxs();
@@ -155,6 +162,9 @@ int main(int argc, char *argv[]){
         icm_mod.solve_gas_model(verbose, 1e-5);
         Rmax = icm_mod.thermal_pressure_outer_rad()*Rvir;
         Yanl = icm_mod.calc_Y(R500, Rvir, Rmax);
+
+        Lx_total = 0.0;
+
         for (j = 0; j < nbins; j++) {
             
             delx = (log10(5.0*Rvir)-log10(0.01*Rvir))/nbins;
@@ -173,6 +183,8 @@ int main(int argc, char *argv[]){
             solid_angle[j] = 4.0*M_PI*180.0*3600.0/M_PI *180.0*3600.0/M_PI;
 
             emiss_prof[j] = icm_mod.calc_xray_emissivity(rbins[j], R500, Redshift);
+            Lx[j] = emiss_prof[j] * dvol[j] * pow (megapc,3.0);
+            Lx_total += Lx[j];
             kT[j] = icm_mod.calc_gas_temperature (rbins[j], R500);
             ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500);
             angbins[j] = rbins[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
@@ -185,10 +197,10 @@ int main(int argc, char *argv[]){
         // 2D projected emission-weighted temperature 
         temperature_projection(rbins, r_in, r_out, kT, kT_2D, emiss_prof, nbins); 
         
-        fprintf(outhalo,"%d %d %d %d %f %e %f %f %f\n", i, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500, R500, Rvir, Rscale);
+        fprintf(outhalo,"%d %d %d %d %f %e %f %f %f %e %e\n", i, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500, R500, Rvir, Rscale, Lx_total, Lx_vik);
         fprintf(outprof,"# %d\n", i);
         for (j = 0; j < nbins; j++) {
-            fprintf(outprof,"%f %f %f %f %f %f %e %e\n", r_in[j], rbins[j], r_out[j], ang_in[j], angbins[j], ang_out[j], sb_prof[j]/solid_angle[j], kT_2D[j]);
+            fprintf(outprof,"%f %f %f %f %f %f %e %e\n", r_in[j], rbins[j], r_out[j], ang_in[j], angbins[j], ang_out[j], Lx[j], kT_2D[j]);
         }
     }
     fclose(outhalo);
@@ -266,3 +278,14 @@ float periodic(float x, float L){
     return y;
 }
 
+double vikhlinin_lum ( double M500, double redshift) {
+    double Lx, Ez, aexp;
+
+    Ez = sqrt(0.27 * pow((1.0 + redshift), 3.0) + 0.73);
+    Lx = 47.392 + 1.61*log(M500) + 1.850 * log(Ez) - 0.39*log(0.70/0.72);
+
+    Lx = exp(Lx);
+    
+    return Lx;
+
+}

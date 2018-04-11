@@ -17,8 +17,7 @@ static struct EMISSION *apec_data_static;
 /*static VariableType static_variable;
 const VariableType * const global_variable_pointer = & static_variable;
 */
-//const struct EMISSION ** const apec_data_global_pointer = &apec_data_static;
-struct EMISSION ** apec_data_global_pointer = &apec_data_static;
+const struct EMISSION ** const apec_data_global_pointer = &apec_data_static;
 
 unsigned long read_fits_spectrum(int require_checksum,
            char *linefile, char *cocofile,

@@ -62,9 +62,9 @@ void set_lambda_table ( double tarray[ntmax], double rarray[nrmax], double lambd
 	//printf("%e %e %e\n", zarray[iz], zlmin, pow(10.0,zlmin+(double)iz*zres));
     }
 
-    rres = (rlmax-rlmin)/(nrmax);
+    rres = (log10(rmax)-log10(rmin))/(nrmax);
     for (ir = 0; ir < nrmax; ir++) {
-	rarray[ir] = rlmin+(double)ir*rres;
+	rarray[ir] = pow(10.0, log10(rmin)+(double)ir*rres);
 	//printf("%e %e %e\n", zarray[iz], zlmin, pow(10.0,zlmin+(double)iz*zres));
     }
    
@@ -91,17 +91,17 @@ void set_lambda_table ( double tarray[ntmax], double rarray[nrmax], double lambd
             //note that the photon arrival rate is already redshifted
             //ebin is already in receiver's frame
             //still need to redshift photon energy when converting from photon counts to flux
-            apec ( ebin, ne, metal, redshift, temp, spec );
-	    lambda = 1.0e-70;
+            apec ( ebin, ne, metal, temp, redshift, spec );
+	    lambda = 0.0;
 	    for (ie = 0; ie < nemax; ie++) {
                 //printf("%e", spec[ie]);
-                // spec[ie] *= (0.5*(ebin[ie]+ebin[ie+1]))*keV2erg/(1.+redshift);
-		lambda += spec[ie];
+                // photons -> ergs
+		lambda += spec[ie]*(0.5*(ebin[ie]+ebin[ie+1]))*keV2erg/(1.+redshift);
 	    }
             //printf("temp, z, lambda = %e %f %e\n", temp, redshift, lambda);
             
 	    lambda_table[i][j] = lambda;
-            assert(lambda > 0  && lambda < 1e-3);
+            assert(lambda >= 0);
 	}
     }
     printf("done.\n");
@@ -123,7 +123,7 @@ double int_lambda_table (double temp, double redshift, double tarray[ntmax], dou
 
     it = (int)((ltemp-log10(tmin))/tres);
     //iz = (int)((lmetal-zlmin)/zres);
-    ir = (int)((lredshift-log10(rlmin))/rres);
+    ir = (int)((lredshift-log10(rmin))/rres);
 
 
     //if (iz < 0 ) {

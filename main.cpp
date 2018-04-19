@@ -43,7 +43,7 @@ int main(int argc, char *argv[]){
     char root[512];
     char halo_run[512];
     //char *root = config_get_string("io","directory");
-    //har *halo_run = config_get_string("io","identifier");
+    //char *halo_run = config_get_string("io","identifier");
     float mass_threshold = config_get_float("halo","mass_threshold");
     float H0 = config_get_float("cosmo","H0");
     float Omega_M = config_get_float("cosmo","Om");

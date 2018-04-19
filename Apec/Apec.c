@@ -6,6 +6,7 @@
 #include <limits.h>
 #include "Apec.h"
 
+
 struct EMISSION *apec_data;
 
 void init_apec () {
@@ -22,9 +23,7 @@ void init_apec () {
     strncpy(linefile, LINE_FITS_FILE, MAXSTRLEN);
     strncpy(cocofile, COCO_FITS_FILE, MAXSTRLEN);
 
-    readapec_getdata_extern(linefile,cocofile);
-
-    //readapec_getdata(linefile,cocofile,&apec_data);
+    readapec_getdata_extern(linefile, cocofile);
 
     return;
 
@@ -76,8 +75,7 @@ void apec ( double *ebins, int nbins, double abun, double temp, double redshift,
 
     readapec_calc_allion_spectrum(apec_data, nbins, ebins_emit, temp, nearest, nelements, Zlist, byion, &emission_list);
     readapec_calc_total_emission_abundance (emission_list, nelements, Zlist, abundlist, defaultabund, spec);
-
-    
+ 
     if (emission_list != NULL) {
         if ( emission_list->ion_emission != NULL){
             free(emission_list->ion_emission);
@@ -85,12 +83,10 @@ void apec ( double *ebins, int nbins, double abun, double temp, double redshift,
         free(emission_list);
      }
      
-
-    //for ( i = 0; i < nbins; i++) printf("%d: %f %e\n",i, ebins[i], spec[i]);
     for ( i = 0; i < nbins; i++) {
         //redshifting spectrum to account for time dilation in photon arrival rate 1/dt 
-        spec[i] = spec[i]/(1.0+redshift);   
-        //spec_sum += spec[i];
+        // spec[i] = spec[i]/(1.0+redshift);   
+        spec_sum += spec[i];
     }
     
     //printf("spec_sum =  %e\n", spec_sum);

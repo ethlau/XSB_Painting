@@ -885,7 +885,7 @@ Note that the unit does not include hubble parameter (h).
 
       xx = r/(1000.0*ri/mpc);
       T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
-
+      if ( T < 0.0 ) T = 0.0;
       return T; 
     }
 
@@ -897,13 +897,16 @@ Note that the unit does not include hubble parameter (h).
       ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
       T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
 
+      if ( T > 0.0) {
       // in ergs cm^3 /s
-      emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table);
-      ne = ngas * mmw / mu_e;
-      nH = ne / 1.2;
-      // in ergs /cm^3 /s
-      emis *= ne * nH;
-
+        emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table);
+        ne = ngas * mmw / mu_e;
+        nH = ne / 1.2;
+        // in ergs /cm^3 /s
+        emis *= ne * nH;
+      } else {
+        emis =  0.0;
+      }
       // total (1+z)^-4 dependence for integrated over E
       // emis /= pow((1.0+redshift), 3.0);
 

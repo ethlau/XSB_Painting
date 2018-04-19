@@ -3,9 +3,6 @@
 
 #include "readapec.h"
 
-#define LINE_FITS_FILE "/home/fas/nagai/etl28/programs/Xrays/atomdb/atomdb_v3.0.9/apec_line.fits"
-#define COCO_FITS_FILE "/home/fas/nagai/etl28/programs/Xrays/atomdb/atomdb_v3.0.9/apec_coco.fits"
-
 #define NUMZ 30
 
 struct EMISSION *apec_data;

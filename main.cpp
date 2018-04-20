@@ -180,35 +180,33 @@ int main(int argc, char *argv[]){
         cosmic_t = cosm_model.cosmic_time(Redshift);
         cosmic_t0 = cosm_model.cosmic_time(0.0);
         E = cosm_model.Efact(Redshift);
-	    cluster nfwclus(0.0, Redshift, overden_id, relation, cosm_model);
+        cluster nfwclus(0.0, Redshift, overden_id, relation, cosm_model);
 
-	    if (strcmp(file_format,"simple")!=0){
-	        if (halo->Mvir < 1) 
-                Mvir = (4.0/3.0)*M_PI*cosm_model.Delta_vir(Redshift)*cosm_model.calc_rho_crit(Redshift)*pow(halo->rvir/(1000.0*h),3.0);
-	        else 
-                Mvir = halo->Mvir/h;
+        if (strcmp(file_format,"simple")!=0){
+            if (halo->Mvir < 1) Mvir = (4.0/3.0)*M_PI*cosm_model.Delta_vir(Redshift)*cosm_model.calc_rho_crit(Redshift)*pow(halo->rvir/(1000.0*h),3.0);
+            else Mvir = halo->Mvir/h;
 
-	        nfwclus.reset_cluster(Mvir, Redshift, overden_id, relation, cosm_model);
-	        conc = halo->rvir/halo->rs;
-	        nfwclus.set_conc(conc);
+            nfwclus.reset_cluster(Mvir, Redshift, overden_id, relation, cosm_model);
+            conc = halo->rvir/halo->rs;
+            nfwclus.set_conc(conc);
 			
-	        M500 = halo->M500c/h;
-	        R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
-	        Rvir = halo->rvir/h/1000.0;
-	        Rscale = halo->rs/1000.0;
+            M500 = halo->M500c/h;
+            R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            Rvir = halo->rvir/h/1000.0;
+            Rscale = halo->rs/1000.0;
 
-	    } else {
-	        M500 = halo->M500c/h;
-	        Mvir = M500;
-	        Rscale = halo->rs/1000;
-	        //Rscale = rscale_from_mass(M500*h, Redshift, cosm_model.calc_rho_crit(Redshift), h);
-	        R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
-	        conc = R500/Rscale;
-	        nfwclus.reset_cluster(Mvir, Redshift, 500.0, relation, cosm_model);
-	        nfwclus.set_conc(conc);
-	        Rvir = halo->rvir/h/1000.0;
-	        //Rvir = nfwclus.get_radius();
-	    }
+        } else {
+            M500 = halo->M500c/h;
+            Mvir = M500;
+            Rscale = halo->rs/1000;
+            //Rscale = rscale_from_mass(M500*h, Redshift, cosm_model.calc_rho_crit(Redshift), h);
+            R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            conc = R500/Rscale;
+            nfwclus.reset_cluster(Mvir, Redshift, 500.0, relation, cosm_model);
+            nfwclus.set_conc(conc);
+            Rvir = halo->rvir/h/1000.0;
+            //Rvir = nfwclus.get_radius();
+        }
         /* Here, use halo concentration from the halo catalog instead of the M-c relation from Duffy+08
            set halo concentration using M-c relation of Duffy et al (2008) */
         //conc = nfwclus.concentration(conc_norm, conc_mass_norm);
@@ -216,7 +214,7 @@ int main(int argc, char *argv[]){
 
         cout << "Halo parameters: " << endl;
         printf("M500 = %e, Redshift = %f, ", halo->M500c/h, Redshift);
-	    printf("Rscale = %f, Rvir = %f, R500 = %f, Cvir = %f\n", Rscale, Rvir, R500,  conc);
+        printf("Rscale = %f, Rvir = %f, R500 = %f, Cvir = %f\n", Rscale, Rvir, R500,  conc);
 
         gas_model icm_mod(delta_rel, ad_index, eps_fb, eps_dm, fs_0, fs_alpha, pturbrad, delta_rel_zslope, delta_rel_n);
 
@@ -250,8 +248,8 @@ int main(int argc, char *argv[]){
 
             kT[j] = icm_mod.calc_gas_temperature (rbins[j], R500);
 
-	        if (strcmp(file_format,"simple")!=0){
-	            ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500);
+            if (strcmp(file_format,"simple")!=0){
+                ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500);
                 solid_angle[j] = 4.0*M_PI*180.0*3600.0/M_PI *180.0*3600.0/M_PI;
                 emiss_prof[j] = icm_mod.calc_xray_emissivity(rbins[j], R500, Redshift);
                 Lx[j] = emiss_prof[j] * dvol[j] * pow(megapc,3.0);
@@ -259,50 +257,49 @@ int main(int argc, char *argv[]){
                 angbins[j] = rbins[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
                 ang_in[j] = r_in[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
                 ang_out[j] = r_out[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
-	        } else {
-		        ngas[j] = icm_mod.calc_gas_density (rbins[j], R500);
-	        }    
+            } else {
+                ngas[j] = icm_mod.calc_gas_density (rbins[j], R500);
+            }    
         }
 
-	    if (strcmp(file_format,"simple")!=0){
-            // project to emissivity get surface brightness profile (sec 5.5.4 from Sarazin 88)
+        if (strcmp(file_format,"simple")!=0){
             luminosity_to_SB(Redshift, rbins, r_in, r_out, Lx, sb_prof, nbins); 
-	    }
+        }
     
-	    if (strcmp(file_format,"rockstar")==0) {
+        if (strcmp(file_format,"rockstar")==0) {
             fprintf(outhalo,"%ld %d %f %f %f %f %f %f %f %e %e %e %f \n", 
                     halo->id,halo->pid,halo->x,halo->y,halo->z,halo->redshift,
                     Rvir,Rscale,R500,Mvir,halo->M200c/h,halo->M500c/h,halo->Xoff);
-	    } else if (strcmp(file_format,"lightcone")==0) {
-	        fprintf(outhalo,"%d %d %d %d %f %e %f %f %f %e %e\n", 
-            i, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500, R500, Rvir, Rscale, total_Lx, Lx_vik);
-	    }
+        } else if (strcmp(file_format,"lightcone")==0) {
+            fprintf(outhalo,"%d %d %d %d %f %e %f %f %f %e %e\n", 
+                    i, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500, R500, Rvir, Rscale, total_Lx, Lx_vik);
+        }
 
-	    if (strcmp(file_format,"simple")==0){
-	        cout << "writing output for simple " << endl;
-	        sprintf(outprofname, "prof_run_%ld.txt", halo->id);
-	        outprof = fopen (outprofname, "w");
-	        fprintf(outprof,"# %ld\n", halo->id);
-	        fprintf(outprof,"# M=%e[Msun] z=%f c=%f\n", M500, Redshift, conc);
-	        fprintf(outprof,"# r_in r_mid r_out [Mpc] kT[keV] dgas[g/cm3] \n");
-	    } else {
+        if (strcmp(file_format,"simple")==0){
+            cout << "writing output for simple " << endl;
+            sprintf(outprofname, "prof_run_%ld.txt", halo->id);
+            outprof = fopen (outprofname, "w");
             fprintf(outprof,"# %ld\n", halo->id);
-	    }
+            fprintf(outprof,"# M=%e[Msun] z=%f c=%f\n", M500, Redshift, conc);
+            fprintf(outprof,"# r_in r_mid r_out [Mpc] kT[keV] dgas[g/cm3] \n");
+        } else {
+            fprintf(outprof,"# %ld\n", halo->id);
+        }
 		
         for (j = 0; j < nbins; j++) {
-	        if (strcmp(file_format,"simple")==0){
+            if (strcmp(file_format,"simple")==0){
                 fprintf(outprof,"%f %f %f %e %e\n", r_in[j], rbins[j], r_out[j], kT[j], ngas[j]);
-	        } else {
-		        fprintf(outprof,"%f %f %f %f %f %f %e %e %e %e\n", 
-                  r_in[j], rbins[j], r_out[j], ang_in[j], angbins[j], ang_out[j], Lx[j], kT[j], ngas[j], sbprof[j]);
-	        }
+            } else {
+                fprintf(outprof,"%f %f %f %f %f %f %e %e %e %e\n", 
+                  r_in[j], rbins[j], r_out[j], ang_in[j], angbins[j], ang_out[j], Lx[j], kT[j], ngas[j], sb_prof[j]);
+            }
         }
     }
-	if (strcmp(file_format,"simple")==0) {
+    if (strcmp(file_format,"simple")==0) {
         fclose(outprof);
     } else if (strcmp(file_format,"simple")!=0){
-	    fclose(outhalo);
-	    fclose(outprof);		
+        fclose(outhalo);
+        fclose(outprof);		
     }
 
     destroy_halo_list(halos);

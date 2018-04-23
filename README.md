@@ -6,7 +6,7 @@ Paint X-ray surface brightness profile and projected 2D temperature profile for 
 
 cfitsio and gnu science library are needed to compile the code. `CFITSDIR` in Makefile should be updated accordingly with the directory of cfitsio. 
 
-APEC libraries from atmodb are also needed to run the code. In the Makefile, change the variables `LINE_APEC_FITS` and `COCO_APEC_FITS` to the path where the apec fits files are located. 
+APEC libraries from [atmodb](http://www.atomdb.org/download.php) are also needed to run the code. In the Makefile, change the variables `LINE_APEC_FITS` and `COCO_APEC_FITS` to the path where the apec fits files are located. 
 
 `make` to compile
 

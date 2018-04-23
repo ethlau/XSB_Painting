@@ -15,6 +15,9 @@
 #define rmax            2.0
 #define nrmax           50
 
+// ICM metallicity in units of Solar
+#define ABUNDANCE       0.3 
+
 extern double tarray[ntmax]; //keV
 extern double zarray[nzmax]; //Solar unit
 extern double rarray[nrmax]; //Solar unit

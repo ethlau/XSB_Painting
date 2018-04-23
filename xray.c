@@ -23,7 +23,6 @@ void set_lambda_table ( double tarray[ntmax], double rarray[nrmax], double lambd
      * for a range of temperature and abundance   
      * Original spectrum in units of photon*cm**3/s (into 4pi angle) in emitter's frame
      * Converted to ergs*cm**3/s by multiplying E in keV and keV2erg unit conversion 
-     * and redshifted by (1+z)
      */
 
     char filename[256];
@@ -43,9 +42,12 @@ void set_lambda_table ( double tarray[ntmax], double rarray[nrmax], double lambd
     int ie, je, it, iz, ir, i, j;
 
     init_apec();
-    printf("nemax, ntmax, nrmax = %d %d %d\n", nemax, ntmax, nrmax);
+    printf("Number of bins in arrays of Energy, Temperature, Redshift = %d, %d, %d\n", nemax, ntmax, nrmax);
+    printf("Energy range = [%f,%f] keV\n", emin, emax);
+    printf("Temperature range = [%f,%f] keV\n", tmin, tmax);
+    printf("Redshift range = [%f,%f] \n", rmin, rmax);
     eres = (emax-emin)/nemax;
-    printf("eres = %f\n", eres);
+    printf("Energy resolution = %f [keV]\n", eres);
     for (ie = 0; ie < nemax+1; ie++) {
 	ebin[ie] = emin + (double)ie*eres;
     }
@@ -85,7 +87,7 @@ void set_lambda_table ( double tarray[ntmax], double rarray[nrmax], double lambd
  
 	    temp = tarray[i];
 	    //metal = zarray[j];
-            metal = 0.3;
+            metal = ABUNDANCE;
             redshift = rarray[j];
             //spec is in units of photons cm^3/s/bin  in receiver's frame
             //note that the photon arrival rate is already redshifted

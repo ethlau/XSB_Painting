@@ -21,7 +21,7 @@ double tres, zres, eres;
 const double PI = 4.0*atan(1.0);
 const double megapc = 3.0857e24; // in cm
 float periodic(float x, float L);
-void luminosity_to_SB (double redshift, double* rbins, double* r_in, double* r_out, double* luminosity, double* surface_brightness, int nbins);
+void luminosity_to_SB (double redshift, double rbins[MAXBINS], double r_in[MAXBINS], double r_out[MAXBINS], double              luminosity[MAXBINS], double surface_brightness[MAXBINS], int nbins);
 void emission_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, int nbins);
 void temperature_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, double* weight, int nbins);
 float rscale_from_mass(float m500, float z, float rhocrit, float h);
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]){
     int nbins = 500;
     double delx;
     double r_in[MAXBINS], r_out[MAXBINS], dvol[MAXBINS];
-    double ang_in[MAXBINS], ang_out[MAXBINS], angbins[MAXBINS], solid_angle[MAXBINS];
+    double ang_in[MAXBINS], ang_out[MAXBINS], angbins[MAXBINS];
     double rbins[MAXBINS], emiss_prof[MAXBINS], sb_prof[MAXBINS], emiss_measure[MAXBINS];
     double kT[MAXBINS], ngas[MAXBINS], Lx[MAXBINS];
     double kT_2D[MAXBINS], ngas_2D[MAXBINS];
@@ -153,8 +153,8 @@ int main(int argc, char *argv[]){
         halo = &(halos->list[i]);
         if( halo->M500c/h < mass_threshold ) { 
             //cout << "Mass is " << halo->M500c/h << endl;
-	        //cout << "Skipped" <<endl;
-	        continue;
+            //cout << "Skipped" <<endl;
+            continue;
         }
 
         for (j = 0; j < MAXBINS; j++) {
@@ -250,7 +250,6 @@ int main(int argc, char *argv[]){
 
             if (strcmp(file_format,"simple")!=0){
                 ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500);
-                solid_angle[j] = 4.0*M_PI*180.0*3600.0/M_PI *180.0*3600.0/M_PI;
                 emiss_prof[j] = icm_mod.calc_xray_emissivity(rbins[j], R500, Redshift);
                 Lx[j] = emiss_prof[j] * dvol[j] * pow(megapc,3.0);
                 total_Lx += Lx[j];
@@ -307,15 +306,14 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void luminosity_to_SB (double redshift, double* rbins, double* r_in, double* r_out, double* luminosity, double* surface_brightness, int nbins){
+void luminosity_to_SB (double redshift, double rbins[MAXBINS], double r_in[MAXBINS], double r_out[MAXBINS], double              luminosity[MAXBINS], double surface_brightness[MAXBINS], int nbins){
 
     /* luminosity in erg/s in rest-frame of the source in the observer's waveband
      * output is surface brightness in the observer's frame; using Equation 3.53 from Mo, White, van den Bosch
-     * unit of surface brightnes is erg /s /cm^2 
+     * unit of surface brightnes is erg/s/cm^2/arcsecs^2 
      */
-    int i,j;
+    int i;
     double delr;
-
 
     for (i=0; i<MAXBINS; i++) {
         surface_brightness[i] = 0.0;
@@ -323,8 +321,8 @@ void luminosity_to_SB (double redshift, double* rbins, double* r_in, double* r_o
 
     for (i=0; i<nbins; i++) {
         delr =(r_out[i] - r_in[i]) * megapc;
-        surface_brightness[j] = luminosity[i]/(M_PI*M_PI*delr*delr)/pow((1.0+redshift),4); // erg/s/cm^2/radian^2
-        surface_brightness[j] /= (180.0*3600.0/M_PI)*(180.0*3600.0/M_PI); //converting to erg/s/cm^2/arcsec^2
+        surface_brightness[i] = luminosity[i]/(M_PI*M_PI*delr*delr)/pow((1.0+redshift),4); // erg/s/cm^2/radian^2
+        surface_brightness[i] /= (180.0*3600.0/M_PI)*(180.0*3600.0/M_PI); //converting to erg/s/cm^2/arcsec^2
     
     }
 

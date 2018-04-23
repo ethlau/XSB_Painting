@@ -8,7 +8,7 @@ cfitsio and gnu science library are needed to compile the code. `CFITSDIR` in Ma
 
 `make` to compile
 
-`./sbprof example.cfg` to run. Check example.cfg for parameters explanation
+`./sbprof example.cfg <directory> <run_id>` to run. Check example.cfg for parameters explanation
 
 ##### No Concentration
 

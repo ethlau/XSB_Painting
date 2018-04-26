@@ -1027,7 +1027,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
 
 
     double returnP_mod(float R500, float r, float x_break, float npoly_mod, float nnt_mod){
-        // returns the pressure at distance r/Mpc, in keV/m^3
+        // returns *total* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a sharp break at x_break
         double xx = (double)r/(1000.0*ri/mpc); //xx is r in units of Rs
@@ -1049,7 +1049,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
 
 
     double returnP_mod2(float R500, float r, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
-        // returns the pressure at distance r/Mpc, in keV/m^3
+        // returns *total* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a SMOOTH transtion around x_break
 
@@ -1062,6 +1062,52 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         thisP_inside *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
         thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
         thisP_inside *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
+
+        float ratio = 0.5*(1.0-tanh((r/R500-x_break)/x_smooth)); // ratio=1 inside and ratio=0 outside
+        thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
+        //cout<<r/R500<<" "<<ratio<<" "<<1-ratio<<endl;
+
+
+        return thisP;
+
+    }
+
+    double returnPth_mod(float R500, float r, float x_break, float npoly_mod) {
+        // returns *thermal* pressure at distance r/Mpc, in keV/m^3
+        // for electron pressure muliply this with mmw/mu_e
+        // --- this modification features a sharp break at x_break
+        double xx = (double)r/(1000.0*ri/mpc); //xx is r in units of Rs
+        double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
+        double thisP;
+        if(r/R500>x_break){
+            thisP = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+        }
+        else if(r/R500<=x_break){
+            thisP = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
+            thisP *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
+            //thisP *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+            //thisP *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
+        }
+
+    return thisP;
+
+    }
+
+
+    double returnPth_mod2(float R500, float r, float x_break, float npoly_mod, float x_smooth){
+        // returns *thermal* pressure at distance r/Mpc, in keV/m^3
+        // for electron pressure muliply this with mmw/mu_e
+        // --- this modification features a SMOOTH transtion around x_break
+
+        double xx = (double)r/(1000.0*ri/mpc); //xx is r in units of Rs
+        double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
+        double thisP_outside, thisP_inside, thisP;
+
+        thisP_outside = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+        thisP_inside = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
+        thisP_inside *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
+        //thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+        //thisP_inside *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
 
         float ratio = 0.5*(1.0-tanh((r/R500-x_break)/x_smooth)); // ratio=1 inside and ratio=0 outside
         thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
@@ -1196,6 +1242,31 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
     }
 */
 
+    double returnT_mod(float R500, float r, float x_break, float npoly_mod ){
+        // returns temperature at distance r/Mpc, in keV
+        // --- this modification features a sharp break at x_break
+        double thisT, thisP, ngas;
+
+        thisP = returnPth_mod(R500, r, x_break, npoly_mod); //in keV/m^3 
+        thisP *= 1e6; // in keV/cm^-3
+        ngas = return_ngas_mod(R500, r, x_break, npoly_mod); // in cm^-3
+        thisT = thisP/ngas;
+        return thisT;
+
+    }
+
+
+    double returnT_mod2(float R500, float r, float x_break, float npoly_mod, float x_smooth){
+        // returns temperature at distance r/Mpc, in keV/m^3
+        // --- this modification features a SMOOTH transtion around x_break
+        double thisT, thisP, ngas;
+
+        thisP = returnPth_mod2(R500, r, x_break, npoly_mod, x_smooth); //in keV/m^3 
+        thisP *= 1e6; // in keV/cm^-3
+        ngas = return_ngas_mod(R500, r, x_break, npoly_mod); // in cm^-3
+        thisT = thisP/ngas;
+        return thisT;
+    }
 
     double return_entropy_mod(float R500, float r, float x_break, float npoly_mod, float nnt_mod){
         // below x_break (in units of R500) switch to a model with modified polytropic index and modified n_nt

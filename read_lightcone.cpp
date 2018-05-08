@@ -39,8 +39,8 @@ halo_list *load_halo_run ( const char *filename ) {
             halos->list[i].theta_y = theta_y;
             halos->list[i].redshift = redshift;
             halos->list[i].pec_vel = pec_vel;
-            halos->list[i].rvir = rvir;
-            halos->list[i].rs = rs;
+            halos->list[i].rvir = rvir*(1.0+redshift);
+            halos->list[i].rs = rs*(1.0+redshift);
             halos->list[i].Mvir = Mvir;
             halos->list[i].M200b = M200b;
             halos->list[i].M200c = M200c;

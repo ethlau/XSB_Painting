@@ -262,7 +262,7 @@ int main(int argc, char *argv[]){
 
             if (strcmp(file_format,"simple")!=0){
                 ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500c);
-                emiss_prof[j] = icm_mod.calc_xray_emissivity(rbins[j], R500c, Redshift); //ergs/cm^3/sec
+                emiss_prof[j] = icm_mod.calc_xray_emissivity(ngas[j], kT[j], Redshift); //ergs/cm^3/sec
                 ne = ngas[j]* 0.59 / 1.14; 
                 nH = ne / 1.2;
                 xspec_norm[j] = 1.0e-14*ne*nH*dvol[j] / pow(cosm_model.ang_diam(Redshift)*(1.0+Redshift),2.0)/4.0/M_PI *megapc; 

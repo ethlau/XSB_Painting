@@ -889,13 +889,13 @@ Note that the unit does not include hubble parameter (h).
       return T; 
     }
 
-    double calc_xray_emissivity(double r, float R500, double redshift){
-      double xx, ngas, T, emis;
+    double calc_xray_emissivity(double ngas, double T, double redshift){
+      double xx, emis;
       double nH, ne;
 
-      xx = r/(1000.0*ri/mpc); //r in mpc, xx is r/rs
-      ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
-      T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
+      //xx = r/(1000.0*ri/mpc); //r in mpc, xx is r/rs
+      //ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
+      //T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
 
       if ( T > 0.0) {
         emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table); // in ergs cm^3 /s

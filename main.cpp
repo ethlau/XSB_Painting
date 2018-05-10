@@ -196,7 +196,9 @@ int main(int argc, char *argv[]){
             nfwclus.set_conc(cvir);
 			
             M500c = halo->M500c/h;
+            M200c = halo->M200c/h;
             R500c = pow(M500c/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            R200c = pow(M200c/((4.0/3.0)*M_PI*200.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
             Rvir = halo->rvir/h/1000.0;
             Rscale = halo->rs/h/1000.0;
 

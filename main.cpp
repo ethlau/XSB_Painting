@@ -26,8 +26,8 @@ void luminosity_to_SB (double redshift, double rbins[MAXBINS], double r_in[MAXBI
 void profile_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, int nbins);
 void weighted_profile_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, double* weight, int nbins);
 float rscale_from_mass(float m500, float z, float rhocrit, float h);
-double interpolate_Lx ( double Lx[MAXBINS], double rbins[MAXBINS], double R500, int nbins );
-double vikhlinin_lum ( double M500, double redshift);
+double interpolate_Lx ( double Lx[MAXBINS], double rbins[MAXBINS], double R500c, int nbins );
+double vikhlinin_lum ( double M500c, double redshift);
 
 using namespace std;
 int main(int argc, char *argv[]){
@@ -59,9 +59,16 @@ int main(int argc, char *argv[]){
     float eps_dm = 0.0;
     float fs_0 = 0.026;
     float fs_alpha = 0.12;
+
+    float x_break = 0.195;
+    float gamma_mod_0 = 0.10;
+    float gamma_mod_zslope = 1.72;
+    float gamma_mod, npoly_mod ;
+    float x_smooth = 0.01;
+
     int pturbrad = 2;
     bool verbose = false;
-    float Mvir, Rvir, M500, R500, Rscale, conc, z, a, cosmic_t, cosmic_t0;
+    float Mvir, Rvir, M500c, R500c, M200c, R200c, Rscale, cvir, c500, z, a, cosmic_t, cosmic_t0;
     float h = H0/100.0, E;
     // set cluster overdensity
     // this is the overdensity within which mass defined (i.e. \Delta)
@@ -89,7 +96,7 @@ int main(int argc, char *argv[]){
     double kT[MAXBINS], ngas[MAXBINS], Lx[MAXBINS];
     double kT_2D[MAXBINS], ngas_2D[MAXBINS];
     double xspec_norm[MAXBINS];
-    double Lx_shell, total_Lx, Lx_vik;
+    double Lx_shell, total_Lx, Lx_vik, P;
     int i, j;
     FILE *outprof, *outhalo;
 
@@ -100,15 +107,14 @@ int main(int argc, char *argv[]){
         sprintf(root, "%s", argv[2]);
         sprintf(halo_run, "%s", argv[3]);
 
-        sprintf(outhaloname, "sbhalo_run_%s.txt", halo_run);
-    	sprintf(outprofname, "sbprof_run_%s.txt", halo_run);
+        sprintf(outhaloname, "sbhalo_run_%s_mEOS.txt", halo_run);
+    	sprintf(outprofname, "sbprof_run_%s_mEOS.txt", halo_run);
  
         outprof = fopen (outprofname, "w");
         outhalo = fopen (outhaloname, "w");
 		
 	fprintf(outprof,"# r_in r_mid r_out [Mpc] ang_in ang_mid ang_out [arcsecs] Lx [ergs/s] kT [keV] n_gas [cm^-3] SB [erg/s/cm^2/arcsec^2] xspec_norm \n");
     }
-
 
     halo_list *halos;
     halo_struct *halo;
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]){
     if ( &mass_threshold == NULL) {
         mass_threshold = 1.e13;
     }
-    printf("using mass threshold of M500 > %e Msun\n", mass_threshold);
+    printf("using mass threshold of M500c > %e Msun\n", mass_threshold);
 
     cout << "Done halo reading" << endl;
 
@@ -146,13 +152,14 @@ int main(int argc, char *argv[]){
     }
 
     if (strcmp(file_format,"rockstar")==0) {
-	    fprintf(outhalo,"#ID PID X Y Z[Mpc] redshift Rvir Rs R500[kpc] Mvir M200c M500c[Msun] Xoff\n");
+	    fprintf(outhalo,"#ID PID X Y Z[Mpc] redshift Rvir Rs R500c[kpc] Mvir M200c M500c [Msun] Xoff\n");
     }
     else if (strcmp(file_format,"lightcone")==0) {
-	    fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500 [Msun] R500 Rvir Rscale [Mpc] Lx Lx_Vik [erg/s]\n");
+	    fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500c M200c Mvir [Msun] R500c R200c Rvir Rscale [Mpc] Lx Lx_Vik [erg/s]\n");
     }
 
     for( i=0; i < halos->num_halos; i++){
+    //for( i=0; i < 10; i++){
         // cout << "Computing gas profile for halo " << i << endl;
         halo = &(halos->list[i]);
         if( halo->M500c/h < mass_threshold ) { 
@@ -192,56 +199,66 @@ int main(int argc, char *argv[]){
             else Mvir = halo->Mvir/h;
 
             nfwclus.reset_cluster(Mvir, Redshift, overden_id, relation, cosm_model);
-            conc = halo->rvir/halo->rs;
-            nfwclus.set_conc(conc);
+            cvir = halo->rvir/halo->rs;
+            nfwclus.set_conc(cvir);
 			
-            M500 = halo->M500c/h;
-            R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            M500c = halo->M500c/h;
+            M200c = halo->M200c/h;
+            R500c = pow(M500c/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            R200c = pow(M200c/((4.0/3.0)*M_PI*200.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
             Rvir = halo->rvir/h/1000.0;
-            Rscale = halo->rs/1000.0;
+            Rscale = halo->rs/h/1000.0;
 
+            c500 = R500c/Rscale;
         } else {
-            M500 = halo->M500c/h;
-            Mvir = M500;
-            Rscale = halo->rs/1000;
-            //Rscale = rscale_from_mass(M500*h, Redshift, cosm_model.calc_rho_crit(Redshift), h);
-            R500 = pow(M500/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
-            conc = R500/Rscale;
-            nfwclus.reset_cluster(Mvir, Redshift, 500.0, relation, cosm_model);
-            nfwclus.set_conc(conc);
+            M500c = halo->M500c/h;
+            M200c = halo->M200c/h;
+            Mvir = halo->Mvir/h;
+
+            Rscale = halo->rs/h/1000.0;
+            //Rscale = rscale_from_mass(M500c*h, Redshift, cosm_model.calc_rho_crit(Redshift), h);
+            R500c = pow(M500c/((4.0/3.0)*M_PI*500.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
+            R200c = pow(M200c/((4.0/3.0)*M_PI*200.0*cosm_model.calc_rho_crit(Redshift)), 1.0/3.0);
             Rvir = halo->rvir/h/1000.0;
+            cvir = Rvir/Rscale;
+            c500 = R500c/Rscale;
+            nfwclus.reset_cluster(M500c, Redshift, 500.0, relation, cosm_model);
+            nfwclus.set_conc(c500);
             //Rvir = nfwclus.get_radius();
         }
         /* Here, use halo concentration from the halo catalog instead of the M-c relation from Duffy+08
            set halo concentration using M-c relation of Duffy et al (2008) */
-        //conc = nfwclus.concentration(conc_norm, conc_mass_norm);
-        //M500 = nfwclus.get_mass_overden(500.0); // M500 in Msol (for calculating stellar mass frac)
+        //cvir = nfwclus.concentration(conc_norm, conc_mass_norm);
+        //M500c = nfwclus.get_mass_overden(500.0); // M500c in Msol (for calculating stellar mass frac)
 
         cout << "Halo parameters: " << endl;
-        printf("id = %ld, M500 = %e, Redshift = %f, ", halo->id, halo->M500c/h, Redshift);
-        printf("Rscale = %f, Rvir = %f, R500 = %f, Cvir = %f\n", Rscale, Rvir, R500,  conc);
+        printf("id = %ld, M500c = %e, Redshift = %f, ", halo->id, halo->M500c/h, Redshift);
+        printf("Rscale = %f, Rvir = %f, R500c = %f, Cvir = %f\n", Rscale, Rvir, R500c,  cvir);
 
         gas_model icm_mod(delta_rel, ad_index, eps_fb, eps_dm, fs_0, fs_alpha, pturbrad, delta_rel_zslope, delta_rel_n);
 
-        icm_mod.calc_fs(M500, Omega_b/Omega_M, cosmic_t0, cosmic_t);
+        icm_mod.calc_fs(M500c, Omega_b/Omega_M, cosmic_t0, cosmic_t);
         icm_mod.evolve_pturb_norm(Redshift, rcutoff);
-        icm_mod.set_nfw_params(Mvir, Rvir, conc, nfwclus.get_rhoi(), R500);
+        icm_mod.set_nfw_params(Mvir, Rvir, cvir, nfwclus.get_rhoi(), R500c);
         icm_mod.set_mgas_init(Omega_b/Omega_M);
         icm_mod.findxs();
 
         icm_mod.solve_gas_model(verbose, 1e-5);
         Rmax = icm_mod.thermal_pressure_outer_rad()*Rvir;
-        Yanl = icm_mod.calc_Y(R500, Rvir, Rmax);
+        Yanl = icm_mod.calc_Y(R500c, Rvir, Rmax);
+
+        gamma_mod = gamma_mod_0 * pow((1.0+Redshift),gamma_mod_zslope);
+        npoly_mod = 1.0/(gamma_mod - 1.0 );
 
         total_Lx = 0.0;
         
-        Lx_vik = vikhlinin_lum ( M500, Redshift ); 
+        Lx_vik = vikhlinin_lum ( M500c, Redshift ); 
         
         for (j = 0; j < nbins; j++) {
             
-            delx = (log10(3.0*R500)-log10(0.01*R500))/nbins;
-            r_out[j] = pow(10.0, log10(0.01*R500) + (float)j*delx); // outer edge of the radial bin in Mpc
-            rbins[j] = pow(10.0, log10(0.01*R500) + ((float)j-0.5)*delx); // midpt of the radial bin in Mpc
+            delx = (log10(3.0*R500c)-log10(0.01*R500c))/nbins;
+            r_out[j] = pow(10.0, log10(0.01*R500c) + (float)j*delx); // outer edge of the radial bin in Mpc
+            rbins[j] = pow(10.0, log10(0.01*R500c) + ((float)j-0.5)*delx); // midpt of the radial bin in Mpc
 
             if (j == 0) { 
                 r_in[j] = 0.0; // inner edge of the radial bin in Mpc
@@ -251,31 +268,35 @@ int main(int argc, char *argv[]){
                 dvol[j] = (4.0/3.0)*M_PI*(pow(r_out[j], 3.0) - pow(r_out[j-1], 3.0));
             }
 
-            kT[j] = icm_mod.calc_gas_temperature (rbins[j], R500);
+            //kT[j] = icm_mod.calc_gas_temperature (rbins[j], R500c);
+            P = icm_mod.returnPth_mod2(R500c, rbins[j], x_break, npoly_mod, x_smooth);
 
             if (strcmp(file_format,"simple")!=0){
-                ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500);
-                emiss_prof[j] = icm_mod.calc_xray_emissivity(rbins[j], R500, Redshift); //ergs/cm^3/sec
+                ngas[j] = icm_mod.return_ngas_mod(R500c, rbins[j], x_break, npoly_mod);
+                //ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500c);
+                kT[j] = P/ngas[j];
+                //printf("P = %e [keV cm^-3], ngas = %e [cm^-3], kT = %e [keV]\n", P, ngas[j], kT[j]);
+                emiss_prof[j] = icm_mod.calc_xray_emissivity(ngas[j], kT[j], Redshift); //ergs/cm^3/sec
                 ne = ngas[j]* 0.59 / 1.14; 
                 nH = ne / 1.2;
                 xspec_norm[j] = 1.0e-14*ne*nH*dvol[j] / pow(cosm_model.ang_diam(Redshift)*(1.0+Redshift),2.0)/4.0/M_PI *megapc; 
                 Lx_shell = emiss_prof[j] * dvol[j] * pow(megapc,3.0); //ergs/sec
-                if (j ==0 ) {
+                if ( j == 0 ) {
                     Lx[j] = Lx_shell;
                 }
                 else {
-                    Lx[j] = Lx[j-1]+Lx_shell;
+                    Lx[j] = Lx[j-1] + Lx_shell;
                 }
                 angbins[j] = rbins[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
                 ang_in[j] = r_in[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
                 ang_out[j] = r_out[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
             } else {
-                ngas[j] = icm_mod.calc_gas_density (rbins[j], R500);
+                ngas[j] = icm_mod.calc_gas_density (rbins[j], R500c);
             }    
         }
 
         if (strcmp(file_format,"simple")!=0){
-            total_Lx = interpolate_Lx ( Lx, rbins, R500, nbins );
+            total_Lx = interpolate_Lx ( Lx, rbins, R500c, nbins );
             //luminosity_to_SB(Redshift, rbins, r_in, r_out, Lx, sb_prof, nbins); 
             profile_projection ( rbins, r_in, r_out, emiss_prof, sb_prof, nbins);
 
@@ -288,10 +309,10 @@ int main(int argc, char *argv[]){
         if (strcmp(file_format,"rockstar")==0) {
             fprintf(outhalo,"%ld %d %f %f %f %f %f %f %f %e %e %e %f \n", 
                     halo->id,halo->pid,halo->x,halo->y,halo->z,halo->redshift,
-                    Rvir,Rscale,R500,Mvir,halo->M200c/h,halo->M500c/h,halo->Xoff);
+                    Rvir,Rscale,R500c,Mvir,halo->M200c/h,halo->M500c/h,halo->Xoff);
         } else if (strcmp(file_format,"lightcone")==0) {
-            fprintf(outhalo,"%ld %d %d %d %f %e %f %f %f %e %e\n", 
-                    halo->id, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500, R500, Rvir, Rscale, total_Lx, Lx_vik);
+            fprintf(outhalo,"%ld %d %d %d %f %e %e %e %f %f %f %f %e %e\n", 
+                    halo->id, halo->lens_id, halo->theta_x, halo->theta_y, Redshift, M500c, M200c, Mvir, R500c, R200c, Rvir, Rscale, total_Lx, Lx_vik);
         }
 
         if (strcmp(file_format,"simple")==0){
@@ -299,10 +320,10 @@ int main(int argc, char *argv[]){
             sprintf(outprofname, "prof_run_%ld.txt", halo->id);
             outprof = fopen (outprofname, "w");
             fprintf(outprof,"# %ld\n", halo->id);
-            fprintf(outprof,"# M=%e[Msun] z=%f c=%f\n", M500, Redshift, conc);
+            fprintf(outprof,"# M500c=%e[Msun] z=%f c500c=%f\n", M500c, Redshift, c500);
             fprintf(outprof,"# r_in r_mid r_out [Mpc] kT[keV] dgas[g/cm3] \n");
         } else {
-            fprintf(outprof,"# %ld %e %f %f\n", halo->id, M500, Redshift, conc);
+            fprintf(outprof,"# %ld %e %f %f\n", halo->id, M500c, Redshift, c500);
         }
 		
         for (j = 0; j < nbins; j++) {
@@ -370,7 +391,7 @@ void profile_projection (double* rbins, double* r_in, double* r_out, double* pro
             delr = r_out[i] - r_in[i];
             proj_sum += 2.0 * rbins[i] * delr * profile[i]/ sqrt(r_out[i]*r_out[i]-proj_R[j]*proj_R[j]);
         }
-        proj_prof[j] = proj_sum * megapc; // if profile is emiss_prof [ergs/s/cm^-3, proj_prof is in units of erg/s/cm^-2
+        proj_prof[j] = proj_sum * megapc; // if profile is emiss_prof [ergs/s/cm^-3], proj_prof is in units of erg/s/cm^-2
     }
 
 }
@@ -454,14 +475,14 @@ float rscale_from_mass(float m500, float z, float rhocrit, float h){
     return pow(3.0*(pow(10.0,lgm200_c)/h)/(200*4.0*M_PI*rhocrit),1.0/3)/pow(10.0,lgc200_c);
 }
 
-double interpolate_Lx ( double Lx[MAXBINS], double rbins[MAXBINS], double R500, int nbins ) {
+double interpolate_Lx ( double Lx[MAXBINS], double rbins[MAXBINS], double R500c, int nbins ) {
 
     int j;
     double Lx500 = 0.0;
 
     for (j = 0; j < nbins; j++) {
-        if (rbins[j] >= R500 ) {
-            Lx500 = log10(Lx[j-1])+ log10(Lx[j]/Lx[j-1])/log10(rbins[j]/rbins[j-1])*log10(rbins[j]/R500);
+        if (rbins[j] >= R500c ) {
+            Lx500 = log10(Lx[j-1])+ log10(Lx[j]/Lx[j-1])/log10(rbins[j]/rbins[j-1])*log10(rbins[j]/R500c);
             Lx500 = pow(10.0, Lx500);
         }
     }
@@ -469,11 +490,11 @@ double interpolate_Lx ( double Lx[MAXBINS], double rbins[MAXBINS], double R500, 
     return Lx500;
 }
 
-double vikhlinin_lum ( double M500, double redshift) {
+double vikhlinin_lum ( double M500c, double redshift) {
     double Lx, Ez, aexp;
 
     Ez = sqrt(0.27 * pow((1.0 + redshift), 3.0) + 0.73);
-    Lx = 47.392 + 1.61*log(M500) + 1.850 * log(Ez) - 0.39*log(0.70/0.72);
+    Lx = 47.392 + 1.61*log(M500c) + 1.850 * log(Ez) - 0.39*log(0.70/0.72);
 
     Lx = exp(Lx);
     

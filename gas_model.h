@@ -889,13 +889,15 @@ Note that the unit does not include hubble parameter (h).
       return T; 
     }
 
-    double calc_xray_emissivity(double r, float R500, double redshift){
-      double xx, ngas, T, emis;
+    double calc_xray_emissivity(double ngas, double T, double redshift){
+      double emis;
       double nH, ne;
 
-      xx = r/(1000.0*ri/mpc); //r in mpc, xx is r/rs
-      ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
-      T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
+      //xx = r/(1000.0*ri/mpc); //r in mpc, xx is r/rs
+      //ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
+      //T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
+      //ngas = return_ngas_mod(R500, r, x_break, npoly_mod);
+      //T = return_T_mod(R500, r, x_break, npoly_mod);
 
       if ( T > 0.0) {
         emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table); // in ergs cm^3 /s
@@ -979,43 +981,43 @@ double calc_Y(float R500, float Rvir, double Rmax){
     return res;
 }
 
-double calc_shell_Y(float R500, float Rvir, double rm, double rp){
-    int nx = 100;
-    double res, x, w, r;
-    gsl_integration_glfixed_table *t;
+    double calc_shell_Y(float R500, float Rvir, double rm, double rp){
+        int nx = 100;
+        double res, x, w, r;
+        gsl_integration_glfixed_table *t;
 
-    t = gsl_integration_glfixed_table_alloc(nx);
+        t = gsl_integration_glfixed_table_alloc(nx);
 
-    res = 0.0;
-    for(int i=0;i<nx;i++){
-        gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
-        r = (rp-rm)*x+rm; // in Mpc
-        res += w*4.0*PI*r*r*calc_gas_pressure(r, R500);
+        res = 0.0;
+        for(int i=0;i<nx;i++){
+            gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
+            r = (rp-rm)*x+rm; // in Mpc
+            res += w*4.0*PI*r*r*calc_gas_pressure(r, R500);
+        }
+        res *= pow(mpc*1e2, 3.0)*(rp-rm);
+        gsl_integration_glfixed_table_free(t);
+
+        return res;
     }
-    res *= pow(mpc*1e2, 3.0)*(rp-rm);
-    gsl_integration_glfixed_table_free(t);
 
-    return res;
-}
+    double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double h, double E){
+        int nx = 100;
+        double res, x, w, r;
+        gsl_integration_glfixed_table *t;
 
-double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double h, double E){
-    int nx = 100;
-    double res, x, w, r;
-    gsl_integration_glfixed_table *t;
+        t = gsl_integration_glfixed_table_alloc(nx);
 
-    t = gsl_integration_glfixed_table_alloc(nx);
+        res = 0.0;
+        for(int i=0;i<nx;i++){
+            gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
+            r = (rp-rm)*x+rm; // in Mpc
+            res += w*4.0*PI*r*r*calc_pressure_Arnaud(r, R500, h, E);
+        }
+        res *= pow(mpc*1e2, 3.0)*(rp-rm);
+        gsl_integration_glfixed_table_free(t);
 
-    res = 0.0;
-    for(int i=0;i<nx;i++){
-        gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
-        r = (rp-rm)*x+rm; // in Mpc
-        res += w*4.0*PI*r*r*calc_pressure_Arnaud(r, R500, h, E);
+        return res;
     }
-    res *= pow(mpc*1e2, 3.0)*(rp-rm);
-    gsl_integration_glfixed_table_free(t);
-
-    return res;
-}
 
 
     double returnP(float R500, float r){
@@ -1047,7 +1049,6 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
 
     }
 
-
     double returnP_mod2(float R500, float r, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
         // returns *total* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
@@ -1066,7 +1067,6 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         float ratio = 0.5*(1.0-tanh((r/R500-x_break)/x_smooth)); // ratio=1 inside and ratio=0 outside
         thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
         //cout<<r/R500<<" "<<ratio<<" "<<1-ratio<<endl;
-
 
         return thisP;
 
@@ -1095,7 +1095,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
 
 
     double returnPth_mod2(float R500, float r, float x_break, float npoly_mod, float x_smooth){
-        // returns *thermal* pressure at distance r/Mpc, in keV/m^3
+        // returns *thermal* pressure at distance r/Mpc, in keV/cm^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a SMOOTH transtion around x_break
 
@@ -1113,12 +1113,11 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
         //cout<<r/R500<<" "<<ratio<<" "<<1-ratio<<endl;
 
+        thisP *= 1.0e-6; //convert to keV cm^-3
 
         return thisP;
 
     }
-
-
 
     double thermal_pressure_outer_rad() {
         // returns outermost physical radius for thermal pressure profiles (i.e. the point where the thermal pressure

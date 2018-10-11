@@ -889,13 +889,10 @@ Note that the unit does not include hubble parameter (h).
       return T; 
     }
 
-    double calc_xray_emissivity(double r, float R500, double redshift){
-      double xx, ngas, T, emis;
+    double calc_xray_emissivity(double ngas, double T, double redshift){
+      /* ngas in cm^-3, T in keV */
+      double emis;
       double nH, ne;
-
-      xx = r/(1000.0*ri/mpc); //r in mpc, xx is r/rs
-      ngas = rho0*pow(theta(xx,final_beta), n)/m_p/mmw/pow(mpc,3)/1.e6*m_sun; // cm^-3
-      T = T0*theta(xx,final_beta)*(1.0 - delta_rel*pow(xx*(1000.0*ri/mpc)/R500, delta_rel_n)); //keV
 
       if ( T > 0.0) {
         emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table); // in ergs cm^3 /s
@@ -979,54 +976,54 @@ double calc_Y(float R500, float Rvir, double Rmax){
     return res;
 }
 
-double calc_shell_Y(float R500, float Rvir, double rm, double rp){
-    int nx = 100;
-    double res, x, w, r;
-    gsl_integration_glfixed_table *t;
+    double calc_shell_Y(float R500, float Rvir, double rm, double rp){
+        int nx = 100;
+        double res, x, w, r;
+        gsl_integration_glfixed_table *t;
 
-    t = gsl_integration_glfixed_table_alloc(nx);
+        t = gsl_integration_glfixed_table_alloc(nx);
 
-    res = 0.0;
-    for(int i=0;i<nx;i++){
-        gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
-        r = (rp-rm)*x+rm; // in Mpc
-        res += w*4.0*PI*r*r*calc_gas_pressure(r, R500);
+        res = 0.0;
+        for(int i=0;i<nx;i++){
+            gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
+            r = (rp-rm)*x+rm; // in Mpc
+            res += w*4.0*PI*r*r*calc_gas_pressure(r, R500);
+        }
+        res *= pow(mpc*1e2, 3.0)*(rp-rm);
+        gsl_integration_glfixed_table_free(t);
+
+        return res;
     }
-    res *= pow(mpc*1e2, 3.0)*(rp-rm);
-    gsl_integration_glfixed_table_free(t);
 
-    return res;
-}
+    double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double h, double E){
+        int nx = 100;
+        double res, x, w, r;
+        gsl_integration_glfixed_table *t;
 
-double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double h, double E){
-    int nx = 100;
-    double res, x, w, r;
-    gsl_integration_glfixed_table *t;
+        t = gsl_integration_glfixed_table_alloc(nx);
 
-    t = gsl_integration_glfixed_table_alloc(nx);
+        res = 0.0;
+        for(int i=0;i<nx;i++){
+            gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
+            r = (rp-rm)*x+rm; // in Mpc
+            res += w*4.0*PI*r*r*calc_pressure_Arnaud(r, R500, h, E);
+        }
+        res *= pow(mpc*1e2, 3.0)*(rp-rm);
+        gsl_integration_glfixed_table_free(t);
 
-    res = 0.0;
-    for(int i=0;i<nx;i++){
-        gsl_integration_glfixed_point(0.0, 1.0, i, &x, &w, t);
-        r = (rp-rm)*x+rm; // in Mpc
-        res += w*4.0*PI*r*r*calc_pressure_Arnaud(r, R500, h, E);
+        return res;
     }
-    res *= pow(mpc*1e2, 3.0)*(rp-rm);
-    gsl_integration_glfixed_table_free(t);
-
-    return res;
-}
 
 
-    double returnP(float R500, float r){
-        // returns the pressure at distance r/Mpc, in keV/m^3
+    double returnP(float r, float R500){
+        // returns thermal pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         double xx = (double)r/(1000.0*ri/mpc); //xx is r in units of Rs
         return (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n));
     }
 
 
-    double returnP_mod(float R500, float r, float x_break, float npoly_mod, float nnt_mod){
+    double returnP_mod(float r, float R500, float x_break, float npoly_mod, float nnt_mod){
         // returns *total* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a sharp break at x_break
@@ -1034,12 +1031,12 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
         double thisP;
         if(r/R500>x_break){
-            thisP = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+            thisP = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n));
         }
         else if(r/R500<=x_break){
             thisP = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
             thisP *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
-            thisP *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+            thisP *= (1.0 - delta_rel*pow(r/R500, nnt_mod));  // add non-th. pressure
             thisP *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
         }
 
@@ -1047,8 +1044,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
 
     }
 
-
-    double returnP_mod2(float R500, float r, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
+    double returnP_mod2(float r, float R500, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
         // returns *total* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a SMOOTH transtion around x_break
@@ -1057,22 +1053,21 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
         double thisP_outside, thisP_inside, thisP;
 
-        thisP_outside = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+        thisP_outside = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) ;
         thisP_inside = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
         thisP_inside *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
-        thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+        thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) ;  // add non-th. pressure
         thisP_inside *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
 
         float ratio = 0.5*(1.0-tanh((r/R500-x_break)/x_smooth)); // ratio=1 inside and ratio=0 outside
         thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
         //cout<<r/R500<<" "<<ratio<<" "<<1-ratio<<endl;
 
-
         return thisP;
 
     }
 
-    double returnPth_mod(float R500, float r, float x_break, float npoly_mod) {
+    double returnPth_mod(float r, float R500, float x_break, float npoly_mod) {
         // returns *thermal* pressure at distance r/Mpc, in keV/m^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a sharp break at x_break
@@ -1080,22 +1075,22 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
         double thisP;
         if(r/R500>x_break){
-            thisP = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+            thisP = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) ;
         }
         else if(r/R500<=x_break){
             thisP = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
             thisP *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
-            //thisP *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+            //thisP *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) ;  // add non-th. pressure
             //thisP *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
         }
 
-    return thisP;
+        return thisP;
 
     }
 
 
-    double returnPth_mod2(float R500, float r, float x_break, float npoly_mod, float x_smooth){
-        // returns *thermal* pressure at distance r/Mpc, in keV/m^3
+    double returnPth_mod2(float r, float R500, float x_break, float npoly_mod, float x_smooth){
+        // returns *thermal* pressure at distance r/Mpc, in keV/cm^3
         // for electron pressure muliply this with mmw/mu_e
         // --- this modification features a SMOOTH transtion around x_break
 
@@ -1103,22 +1098,21 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
         double x_break_Rs = x_break*R500/(1000.0*ri/mpc);
         double thisP_outside, thisP_inside, thisP;
 
-        thisP_outside = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) * mmw/mu_e;
+        thisP_outside = (double)p0*pow(theta(xx,final_beta),(n+1.0)) * (1.0 - delta_rel*pow(r/R500, delta_rel_n)) ;
         thisP_inside = (double)p0*pow(theta_mod(xx,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0));
         thisP_inside *= pow(theta(x_break_Rs,final_beta),(n+1.0)) / pow(theta_mod(x_break_Rs,final_beta,x_break_Rs,npoly_mod),(npoly_mod+1.0)); // normalize the break
-        //thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) * mmw/mu_e;  // add non-th. pressure
+        //thisP_inside *= (1.0 - delta_rel*pow(r/R500, nnt_mod)) ;  // add non-th. pressure
         //thisP_inside *= (1.0 - delta_rel*pow(x_break, delta_rel_n)) / (1.0 - delta_rel*pow(x_break, nnt_mod)); // normalize the break
 
         float ratio = 0.5*(1.0-tanh((r/R500-x_break)/x_smooth)); // ratio=1 inside and ratio=0 outside
         thisP = ratio*thisP_inside + (1-ratio)*thisP_outside;
         //cout<<r/R500<<" "<<ratio<<" "<<1-ratio<<endl;
 
+        thisP *= 1.0e-6; //convert to keV cm^-3
 
         return thisP;
 
     }
-
-
 
     double thermal_pressure_outer_rad() {
         // returns outermost physical radius for thermal pressure profiles (i.e. the point where the thermal pressure
@@ -1202,7 +1196,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
     }
 
 
-    double return_ngas_mod(float R500, float r, float x_break, float npoly_mod){
+    double return_ngas_mod(float r, float R500, float x_break, float npoly_mod){
         double xx = (double)r/(1000.0*ri/mpc); // distance from center in units of scale radius
         double rho_gas;
         double Rs = 1000.0*ri/mpc;
@@ -1242,33 +1236,31 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
     }
 */
 
-    double returnT_mod(float R500, float r, float x_break, float npoly_mod ){
+    double returnT_mod(float r, float R500, float x_break, float npoly_mod ){
         // returns temperature at distance r/Mpc, in keV
         // --- this modification features a sharp break at x_break
         double thisT, thisP, ngas;
 
-        thisP = returnPth_mod(R500, r, x_break, npoly_mod); //in keV/m^3 
-        thisP *= 1e6; // in keV/cm^-3
-        ngas = return_ngas_mod(R500, r, x_break, npoly_mod); // in cm^-3
+        thisP = returnPth_mod(r, R500, x_break, npoly_mod); //in keV/cm^3 
+        ngas = return_ngas_mod(r, R500, x_break, npoly_mod); // in cm^-3
         thisT = thisP/ngas;
         return thisT;
 
     }
 
 
-    double returnT_mod2(float R500, float r, float x_break, float npoly_mod, float x_smooth){
+    double returnT_mod2(float r, float R500, float x_break, float npoly_mod, float x_smooth){
         // returns temperature at distance r/Mpc, in keV/m^3
         // --- this modification features a SMOOTH transtion around x_break
         double thisT, thisP, ngas;
 
-        thisP = returnPth_mod2(R500, r, x_break, npoly_mod, x_smooth); //in keV/m^3 
-        thisP *= 1e6; // in keV/cm^-3
-        ngas = return_ngas_mod(R500, r, x_break, npoly_mod); // in cm^-3
+        thisP = returnPth_mod2(r, R500, x_break, npoly_mod, x_smooth); //in keV/cm^3 
+        ngas = return_ngas_mod(r, R500, x_break, npoly_mod); // in cm^-3
         thisT = thisP/ngas;
         return thisT;
     }
 
-    double return_entropy_mod(float R500, float r, float x_break, float npoly_mod, float nnt_mod){
+    double return_entropy_mod(float r, float R500, float x_break, float npoly_mod, float nnt_mod){
         // below x_break (in units of R500) switch to a model with modified polytropic index and modified n_nt
         //
         // return the ELECTRON entropy at distance r/Mpc from center, in units keV*cm^2
@@ -1303,7 +1295,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
     }
 
 
-    double return_entropy(float R500, float r){ // new function by SF
+    double return_entropy(float r, float R500){ // new function by SF
         // return the ELECTRON entropy at distance r/Mpc from center, in units keV*cm^2
         // to do: R500 should be global, protected variable in this class!
         /* double convert= m_sun/pow(mpc,3.)/m_p*1.0e-6;
@@ -1322,7 +1314,7 @@ double calc_shell_Y_Arnaud(float R500, float Rvir, double rm, double rp, double 
     }
 
 
-    double return_entropy_mod2(float R500, float r, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
+    double return_entropy_mod2(float r, float R500, float x_break, float npoly_mod, float nnt_mod, float x_smooth){
         // below x_break (in units of R500) switch to a model with modified polytropic index and modified n_nt
         //
         // return the ELECTRON entropy at distance r/Mpc from center, in units keV*cm^2

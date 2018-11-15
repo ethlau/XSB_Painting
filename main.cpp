@@ -22,7 +22,6 @@ const double PI = 4.0*atan(1.0);
 const double megapc = 3.0857e24; // in cm
 const double ster2arcsec2 = 4.2545088e10;
 float periodic(float x, float L);
-void luminosity_to_SB (double redshift, double rbins[MAXBINS], double r_in[MAXBINS], double r_out[MAXBINS], double luminosity[MAXBINS], double surface_brightness[MAXBINS], int nbins);
 void profile_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, int nbins);
 void weighted_profile_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, double* weight, int nbins);
 float rscale_from_mass(float m500, float z, float rhocrit, float h);
@@ -59,6 +58,13 @@ int main(int argc, char *argv[]){
     float eps_dm = 0.0;
     float fs_0 = 0.026;
     float fs_alpha = 0.12;
+
+    float x_break = 0.195;
+    float gamma_mod_0 = 0.10;
+    float gamma_mod_zslope = 1.72;
+    float gamma_mod, npoly_mod ;
+    float x_smooth = 0.01;
+
     int pturbrad = 2;
     bool verbose = false;
     float Mvir, Rvir, M500c, R500c, M200c, R200c, Rscale, cvir, c500, z, a, cosmic_t, cosmic_t0;
@@ -89,7 +95,7 @@ int main(int argc, char *argv[]){
     double kT[MAXBINS], ngas[MAXBINS], Lx[MAXBINS];
     double kT_2D[MAXBINS], ngas_2D[MAXBINS];
     double xspec_norm[MAXBINS];
-    double Lx_shell, total_Lx, Lx_vik;
+    double Lx_shell, total_Lx, Lx_vik, P;
     int i, j;
     FILE *outprof, *outhalo;
 
@@ -100,15 +106,14 @@ int main(int argc, char *argv[]){
         sprintf(root, "%s", argv[2]);
         sprintf(halo_run, "%s", argv[3]);
 
-        sprintf(outhaloname, "sbhalo_run_%s.txt", halo_run);
-    	sprintf(outprofname, "sbprof_run_%s.txt", halo_run);
+        sprintf(outhaloname, "sbhalo_run_%s_mEOS.txt", halo_run);
+    	sprintf(outprofname, "sbprof_run_%s_mEOS.txt", halo_run);
  
         outprof = fopen (outprofname, "w");
         outhalo = fopen (outhaloname, "w");
 		
 	fprintf(outprof,"# r_in r_mid r_out [Mpc] ang_in ang_mid ang_out [arcsecs] Lx [ergs/s] kT [keV] n_gas [cm^-3] SB [erg/s/cm^2/arcsec^2] xspec_norm \n");
     }
-
 
     halo_list *halos;
     halo_struct *halo;
@@ -141,15 +146,15 @@ int main(int argc, char *argv[]){
 
     /* Set up X-ray emissivity table */
     if (strcmp(file_format,"simple")!=0){
-	    cout << "Setting up X-ray emission table" << endl;
-	    set_lambda_table(tarray,rarray,lambda_table); 
+        cout << "Setting up X-ray emission table" << endl;
+        set_lambda_table(tarray,rarray,lambda_table); 
     }
 
     if (strcmp(file_format,"rockstar")==0) {
-	    fprintf(outhalo,"#ID PID X Y Z[Mpc] redshift Rvir Rs R500c[kpc] Mvir M200c M500c [Msun] Xoff\n");
+        fprintf(outhalo,"#ID PID X Y Z[Mpc] redshift Rvir Rs R500c[kpc] Mvir M200c M500c [Msun] Xoff\n");
     }
     else if (strcmp(file_format,"lightcone")==0) {
-	    fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500c M200c Mvir [Msun] R500c R200c Rvir Rscale [Mpc] Lx Lx_Vik [erg/s]\n");
+        fprintf(outhalo,"# halo_id lens_plane_id theta_x theta_y redshift M500c M200c Mvir [Msun] R500c R200c Rvir Rscale [Mpc] Lx Lx_Vik [erg/s]\n");
     }
 
     for( i=0; i < halos->num_halos; i++){
@@ -240,10 +245,11 @@ int main(int argc, char *argv[]){
         Rmax = icm_mod.thermal_pressure_outer_rad()*Rvir;
         Yanl = icm_mod.calc_Y(R500c, Rvir, Rmax);
 
+        gamma_mod = gamma_mod_0 * pow((1.0+Redshift),gamma_mod_zslope);
+        npoly_mod = 1.0/(gamma_mod - 1.0 );
+
         total_Lx = 0.0;
-        
-        Lx_vik = vikhlinin_lum ( M500c, Redshift ); 
-        
+   
         for (j = 0; j < nbins; j++) {
             
             delx = (log10(3.0*R500c)-log10(0.01*R500c))/nbins;
@@ -258,19 +264,21 @@ int main(int argc, char *argv[]){
                 dvol[j] = (4.0/3.0)*M_PI*(pow(r_out[j], 3.0) - pow(r_out[j-1], 3.0));
             }
 
-            kT[j] = icm_mod.calc_gas_temperature (rbins[j], R500c);
+
+            P = icm_mod.returnPth_mod2(R500c, rbins[j], x_break, npoly_mod, x_smooth);
 
             if (strcmp(file_format,"simple")!=0){
-                ngas[j] = icm_mod.calc_gas_num_density (rbins[j], R500c);
-                emiss_prof[j] = icm_mod.calc_xray_emissivity(ngas[j], kT[j], Redshift); //ergs/cm^3/sec
+                ngas[j] = icm_mod.return_ngas_mod(R500c, rbins[j], x_break, npoly_mod);
+                kT[j] = P/ngas[j];
+                emiss_prof[j] = icm_mod.return_xray_emissivity(ngas[j], kT[j], Redshift); //ergs/cm^3/sec
                 ne = ngas[j]* 0.59 / 1.14; 
                 nH = ne / 1.2;
                 xspec_norm[j] = 1.0e-14*ne*nH*dvol[j] / pow(cosm_model.ang_diam(Redshift)*(1.0+Redshift),2.0)/4.0/M_PI *megapc; 
                 Lx_shell = emiss_prof[j] * dvol[j] * pow(megapc,3.0); //ergs/sec
                 if ( j == 0 ) {
                     Lx[j] = Lx_shell;
-                }
-                else {
+
+                } else {
                     Lx[j] = Lx[j-1] + Lx_shell;
                 }
                 angbins[j] = rbins[j] / cosm_model.ang_diam(Redshift) *180.0*3600.0/M_PI;// in arcsecs
@@ -283,11 +291,10 @@ int main(int argc, char *argv[]){
 
         if (strcmp(file_format,"simple")!=0){
             total_Lx = interpolate_Lx ( Lx, rbins, R500c, nbins );
-            //luminosity_to_SB(Redshift, rbins, r_in, r_out, Lx, sb_prof, nbins); 
             profile_projection ( rbins, r_in, r_out, emiss_prof, sb_prof, nbins);
 
             for (j = 0; j <nbins; j++) {
-                sb_prof[j] /= (4.0*M_PI*pow(1.0+Redshift,4.0))*ster2arcsec2;
+                sb_prof[j] /= (4.0*M_PI*pow(1.0+Redshift,4.0))*ster2arcsec2; //ergs/s/cm^2/arcsec^2
             }
 
         }
@@ -331,30 +338,6 @@ int main(int argc, char *argv[]){
     destroy_halo_list(halos);
 
     return 0;
-}
-
-void luminosity_to_SB (double redshift, double rbins[MAXBINS], double r_in[MAXBINS], double r_out[MAXBINS], double luminosity[MAXBINS], double surface_brightness[MAXBINS], int nbins){
-
-    /* input luminosity in erg/s in rest-frame of the source in the observer's waveband
-     * output is surface brightness in the observer's frame; using Equation 3.53 from Mo, White, van den Bosch
-     * unit of surface brightnes is erg/s/cm^2/arcsecs^2 
-     */
-    int j;
-    double delr;
-
-    for (j=0; j<MAXBINS; j++) {
-        surface_brightness[j] = 0.0;
-    }
-
-    for (j=0; j<nbins; j++) {
-        //delr =(r_out[j] - r_in[j]) * megapc;
-        delr =(r_out[j]) * megapc;
-        //sb = Lx/(pi^2*D^2)*(1+z)^-4, D is physical size of the system
-        surface_brightness[j] = luminosity[j]/(M_PI*M_PI*delr*delr)/pow((1.0+redshift),4); // erg/s/cm^2/steradian
-        surface_brightness[j] /= (180.0*3600.0/M_PI)*(180.0*3600.0/M_PI); //converting to erg/s/cm^2/arcsec^2
-    
-    }
-
 }
 
 void profile_projection (double* rbins, double* r_in, double* r_out, double* profile, double* proj_prof, int nbins){

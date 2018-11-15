@@ -82,14 +82,13 @@ void apec ( double *ebins, int nbins, double abun, double temp, double redshift,
         }
         free(emission_list);
      }
-     
+
+    /* 
     for ( i = 0; i < nbins; i++) {
-        //redshifting spectrum to account for time dilation in photon arrival rate 1/dt 
-        // spec[i] = spec[i]/(1.0+redshift);   
         spec_sum += spec[i];
     }
-    
-    //printf("spec_sum =  %e\n", spec_sum);
+    printf("spec_sum =  %e\n", spec_sum);
+    */
 
     return;
 }

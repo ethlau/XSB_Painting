@@ -893,6 +893,7 @@ Note that the unit does not include hubble parameter (h).
       /* ngas in cm^-3, T in keV */
       double emis;
       double nH, ne;
+
       if ( T > 0.0) {
         emis = int_lambda_table ( T, redshift, tarray, rarray, lambda_table); // in ergs cm^3 /s
         ne = ngas * mmw / mu_e;

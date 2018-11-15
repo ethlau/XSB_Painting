@@ -249,7 +249,7 @@ int main(int argc, char *argv[]){
         npoly_mod = 1.0/(gamma_mod - 1.0 );
 
         total_Lx = 0.0;
-        
+   
         for (j = 0; j < nbins; j++) {
             
             delx = (log10(3.0*R500c)-log10(0.01*R500c))/nbins;
@@ -264,6 +264,7 @@ int main(int argc, char *argv[]){
                 dvol[j] = (4.0/3.0)*M_PI*(pow(r_out[j], 3.0) - pow(r_out[j-1], 3.0));
             }
 
+
             P = icm_mod.returnPth_mod2(R500c, rbins[j], x_break, npoly_mod, x_smooth);
 
             if (strcmp(file_format,"simple")!=0){
@@ -276,6 +277,7 @@ int main(int argc, char *argv[]){
                 Lx_shell = emiss_prof[j] * dvol[j] * pow(megapc,3.0); //ergs/sec
                 if ( j == 0 ) {
                     Lx[j] = Lx_shell;
+
                 } else {
                     Lx[j] = Lx[j-1] + Lx_shell;
                 }

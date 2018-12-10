@@ -9,7 +9,7 @@ char ** config_params;
 #ifdef __cplusplus
 extern "C" void read_config(char *filename);
 extern "C" int config_get_int(char *search_section, char *search_key);
-extern "C" float config_get_float(char *search_section, char *search_key);
+extern "C" double config_get_double(char *search_section, char *search_key);
 extern "C" char *config_get_string(char *search_section, char *search_key);
 extern "C" int *config_get_intarr(char *search_section, char *search_key, int *size);
 #endif

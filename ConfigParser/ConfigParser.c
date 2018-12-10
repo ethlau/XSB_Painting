@@ -14,7 +14,7 @@ int config_get_int(char *search_section, char *search_key){
 	exit(1);
 }
 
-float config_get_float(char *search_section, char *search_key){
+double config_get_double(char *search_section, char *search_key){
 	int i;
 	for(i=0; i<config_num; i++){
 		if (!strcmp(search_section, config_section[i]) && !strcmp(search_key, config_key[i])){

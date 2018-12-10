@@ -170,8 +170,7 @@ int main(int argc, char *argv[]){
         fprintf(outhalo,"# halo_id ra dec redshift M500c M200c Mvir [Msun] Rvir Rscale [Mpc] Lx [erg/s]\n");
     }
 
-    //for( i=0; i < halos->num_halos; i++){
-    for( i=0; i < 100; i++){
+    for( i=0; i < halos->num_halos; i++){
         // cout << "Computing gas profile for halo " << i << endl;
         halo = &(halos->list[i]);
         if ( strcmp(file_format,"erosita_mock")!=0 &&  halo->M500c/h < mass_threshold ) { 

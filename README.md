@@ -10,7 +10,7 @@ APEC libraries from [atmodb](http://www.atomdb.org/download.php) are also needed
 
 `make` to compile
 
-`./sbprof example.cfg <directory> <run_id>` to run. Check example.cfg for parameters explanation
+`./sbprof example.cfg <directory> <run_id/fits file>` to run. Check example.cfg for parameters explanation
 
 ##### No Concentration
 
@@ -24,4 +24,4 @@ The input format for `file_format = simple` should have 3 columns as following:
 1 5.5e13 1.0
 ```
 
-The outputs are in prof_run_[id].txt.
+The outputs are in prof*.txt.
